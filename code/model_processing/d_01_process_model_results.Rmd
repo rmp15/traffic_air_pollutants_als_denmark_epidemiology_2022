@@ -1,0 +1,198 @@
+---
+title: "Process model results"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Source functions to process results 
+```{r include=FALSE}
+source(paste0(model.processing.folder,'d_00_model_processing_functions.R'))
+```
+
+# Load results
+```{r include=FALSE}
+# list of models and datasets
+fmls = paste0('fml',c(1:116))
+datasets = c('data_1yr','data_5yrs','data_10yrs')
+
+# loop through models and datasets with various models
+for(j in c(1:length(datasets))){
+  for(i in c(101:116)){
+    model_current <- paste0('mod','_',fmls[i],'_',datasets[j])
+    assign(model_current, readRDS(paste0(output.folder,model_current,'.rds')))
+  }}
+```
+
+# process results for NOX
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101,102,103,106:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'NOX')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+    # STAN ARM processing
+    for(i in c(116)){
+      dat.temp = process_STANARM(fmls[i],datasets[j],'NOX')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+}
+
+dat.nox <- dat.mean.exp
+```
+
+# process results for CO
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101,102,104,106:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'CO')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+  
+    # STAN ARM processing
+    for(i in c(116)){
+      dat.temp = process_STANARM(fmls[i],datasets[j],'CO')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+  
+}
+
+dat.co <- dat.mean.exp
+```
+
+# process results for EC
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101,102,105,106:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'EC')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+      # STAN ARM processing
+    for(i in c(116)){
+      dat.temp = process_STANARM(fmls[i],datasets[j],'EC')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+}
+
+dat.ec <- dat.mean.exp
+```
+
+# process results for O3
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(102)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'O3')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+}
+
+dat.o3 <- dat.mean.exp
+```
+
+# process results for PM2.5
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'PM25')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+  
+      # STAN ARM processing
+    for(i in c(116)){
+      dat.temp = process_STANARM(fmls[i],datasets[j],'PM25')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+}
+
+dat.pm <- dat.mean.exp
+```
+
+# process results for Traffic Total
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101:102,106:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'Traffic Total')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+}
+
+dat.traffic.total <- dat.mean.exp
+```
+
+# process results for Traffic Average
+```{r include=FALSE}
+dat.mean.exp <- data.frame()
+for(j in c(1:length(datasets))){
+
+    # STAN processing
+    for(i in c(101:102,106:115)){
+      dat.temp = process_STAN(fmls[i],datasets[j],'Traffic Average')
+      dat.mean.exp = rbind(dat.mean.exp, dat.temp)
+    }
+
+}
+
+dat.traffic.average <- dat.mean.exp
+```
+
+# combine results for all pollutants and save
+```{r include=FALSE}
+
+dat.all = rbind(dat.pm, dat.nox, dat.co, dat.ec, dat.o3, dat.traffic.total,dat.traffic.average) 
+
+dat.all %>% as_tibble() %>% 
+  filter(mod == "fml101")
+
+# reorder formulas
+dat.all$mod = ordered(dat.all$mod, levels = paste0('fml', c(101:116)))
+dat.all$pollutant = ordered(dat.all$pollutant, levels = c('Traffic Total','Traffic Average','NOX','CO','EC', 'PM25', 'O3'))
+
+dir.output = paste0(figures.folder,'figure2/')
+ifelse(!dir.exists(dir.output), dir.create(dir.output, recursive=TRUE), FALSE)
+write.csv(dat.all, paste0(dir.output,'multi_pollutant_output.csv'))
+print(dat.all)
+```

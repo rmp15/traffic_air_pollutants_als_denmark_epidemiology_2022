@@ -1,0 +1,91 @@
+---
+title: "Explore Parish SES"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load parish ses data merged with participants' data
+```{r include=FALSE}
+source(paste0(models.folder,'c_00_data_loading.R'))
+```
+
+# List of parish codes which do not have parish ses details and save
+```{r include=TRUE}
+missing_parish_ses = data_5yrs[is.na(data_5yrs$parish_ses), ] %>%
+  ungroup(nr) %>%
+  dplyr::select(sognecode) %>% # sognecode is post code
+  dplyr::arrange(sognecode)
+
+missing_parish_ses = missing_parish_ses[!duplicated(missing_parish_ses), ] %>%
+  tidyr::drop_na()
+
+write.csv(missing_parish_ses,paste0(parish.ses.folder,'missing_parish_ses_sognecodes.csv'),row.names = FALSE)
+```
+
+# How many participants have missing Parish SES from each length of averaging method?
+```{r include=TRUE}
+missing_parish_ses_1yr = data_1yr[is.na(data_1yr$parish_ses), ] %>%
+  ungroup(nr) %>%
+  dplyr::select(sognecode) %>%
+  dplyr::arrange(sognecode) %>%
+  nrow()
+
+missing_parish_ses_5yrs = data_5yrs[is.na(data_5yrs$parish_ses), ] %>%
+  ungroup(nr) %>%
+  dplyr::select(sognecode) %>%
+  dplyr::arrange(sognecode) %>%
+  nrow()
+
+missing_parish_ses_10yrs = data_10yrs[is.na(data_10yrs$parish_ses), ] %>%
+  ungroup(nr) %>%
+  dplyr::select(sognecode) %>%
+  dplyr::arrange(sognecode) %>%
+  nrow()
+
+print(paste0(missing_parish_ses_1yr,' participants with missing parish SES for 1-year averaging'))
+print(paste0(missing_parish_ses_5yrs,' participants with missing parish SES for 5-year averaging'))
+print(paste0(missing_parish_ses_10yrs,' participants with missing parish SES for 10-year averaging'))
+```
+
+# Parish SES total histogram
+```{r include=TRUE}
+pdf(paste0(parish.ses.folder,'parish_ses_percentage_rows_sums.pdf'))
+p=print(ggplot() +
+  geom_histogram(data=parish_ses,aes(x=sesto)) +
+  xlab('Row sum of Parish SES percentages'))
+print(p)
+dev.off()
+p
+```
+
+# Parish SES total histogram
+```{r include=TRUE}
+pdf(paste0(parish.ses.folder,'parish_ses_distribution.pdf'))
+p = print(ggplot() +
+  geom_histogram(data=parish_ses,aes(x=parish_ses),bins=25) +
+  xlab('Parish SES values'))
+print(p)
+dev.off()
+p
+```

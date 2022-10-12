@@ -1,0 +1,254 @@
+---
+title: "Run models in R-STAN"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# options for rstan only
+```{r include=FALSE}
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
+
+# Load data, rescale pollutants, and view summary
+```{r}
+source(paste0(models.folder,'c_00_data_loading.R'))
+```
+
+# Source model running code
+```{r include=FALSE}
+source(paste0(models.folder,'c_00_multipollutant_running_code.R'))
+```
+
+# run models in R-STAN Bayesian conditional logistic
+```{r}
+# list of models and datasets
+fmls = paste0('fml',c(1:116))
+datasets = c('data_1yr','data_5yrs','data_10yrs')
+
+# loop through models and datasets with various models
+for(j in c(1:length(datasets))){
+  for(i in c(101:116)){
+   
+   # current model name
+   model_current <- paste0('mod','_',fmls[i],'_',datasets[j])
+   
+   # what to do if file already exists
+  if((file.exists(paste0(output.folder,model_current,'.rds')))){
+    print(paste0(model_current,' already previously run so won\'t run again'))
+  }
+   
+   # if model hasn't been run, then run!
+  if(!(file.exists(paste0(output.folder,model_current,'.rds')))){
+    print(paste0(model_current,' running...'))
+
+    # Main model and sensitivities without changing the data going into the model
+    # (sorry the order is weird)
+    if(i %in% c(101,106:115)){ 
+      # traffic pollutants
+      x <- model.matrix(ck ~ NOX + CO + EC, data=get(datasets[j]))
+      x <- x[,c(2:ncol(x))] # get rid of intercept column
+      # non-traffic pollutants
+      x2 <- model.matrix(ck ~ PM25, data=get(datasets[j]))
+      x2 <- as.data.frame(x2[,c(2:ncol(x2))]) # get rid of intercept column
+      # covariates
+      x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]))
+      x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+      data <- 
+        list(N = nrow(x), # number of total cases and controls
+             nr = length(unique(get(datasets[j])$nr)), # number of groups 
+             grp = get(datasets[j])$nr, # group number
+             K = NCOL(x), # number of traffic pollutants
+             L = NCOL(x2), # number of non-traffic pollutants
+             M = NCOL(x3), # number of covariates
+             x = x, # traffic pollutants
+             x2 = x2, # non-traffic pollutants
+             x3 = x3, # covariates
+             ck = get(datasets[j])$ck) # case or control marker
+      # for models using default number of iterations and warm-up
+      if(i %in% c(101,106:113)){
+        assign(model_current, 
+               stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data))
+      }
+      # for models using greater numbers of iterations and warm-up
+      if(i %in% c(114:115)){
+        assign(model_current, 
+               stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data, iter=15000, warmup=5000))
+      }
+    } 
+   
+    # Main model with O3 added
+    if(i %in% c(102)){ 
+      # traffic pollutants
+      x <- model.matrix(ck ~ NOX + CO + EC, data=get(datasets[j]))
+      x <- x[,c(2:ncol(x))] # get rid of intercept column
+      # non-traffic pollutants
+      x2 <- model.matrix(ck ~ PM25 + O3, data=get(datasets[j]))
+      x2 <- x2[,c(2:ncol(x2))] # get rid of intercept column
+      # covariates
+      x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]))
+      x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+      data <- 
+        list(N = nrow(x), # number of total cases and controls
+             nr = length(unique(get(datasets[j])$nr)), # number of groups 
+             grp = get(datasets[j])$nr, # group number
+             K = NCOL(x), # number of traffic-related pollutants
+             L = NCOL(x2), # number of non-traffic pollutants
+             M = NCOL(x3), # number of covariates
+             x = x, # traffic-related pollutants
+             x2 = x2, # non-traffic pollutants
+             x3 = x3, # covariates
+             ck = get(datasets[j])$ck) # case or control marker
+      assign(model_current, stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data))
+    }  
+    
+    # NOX single traffic pollutant model
+    if(i %in% c(103)){ 
+      # traffic pollutants
+      x <- model.matrix(ck ~ NOX, data=get(datasets[j]))
+      x <- as.data.frame(x[,c(2:ncol(x))]) # get rid of intercept column
+      # non-traffic pollutants
+      x2 <- model.matrix(ck ~ PM25, data=get(datasets[j]))
+      x2 <- as.data.frame(x2[,c(2:ncol(x2))]) # get rid of intercept column
+      # covariates
+      x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]))
+      x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+      data <- 
+        list(N = nrow(x), # number of total cases and controls
+             nr = length(unique(get(datasets[j])$nr)), # number of groups 
+             grp = get(datasets[j])$nr, # group number
+             K = NCOL(x), # number of traffic-related pollutants
+             L = NCOL(x2), # number of non-traffic pollutants
+             M = NCOL(x3), # number of covariates
+             x = x, # traffic-related pollutants
+             x2 = x2, # non-traffic pollutants
+             x3 = x3, # covariates
+             ck = get(datasets[j])$ck) # case or control marker
+      assign(model_current, stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data))
+    }      
+    
+    # CO single traffic pollutant model
+    if(i %in% c(104)){ 
+      # traffic pollutants
+      x <- model.matrix(ck ~ CO, data=get(datasets[j]))
+      x <- as.data.frame(x[,c(2:ncol(x))]) # get rid of intercept column
+      # non-traffic pollutants
+      x2 <- model.matrix(ck ~ PM25, data=get(datasets[j]))
+      x2 <- as.data.frame(x2[,c(2:ncol(x2))]) # get rid of intercept column
+      # covariates
+      x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]))
+      x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+      data <- 
+        list(N = nrow(x), # number of total cases and controls
+             nr = length(unique(get(datasets[j])$nr)), # number of groups 
+             grp = get(datasets[j])$nr, # group number
+             K = NCOL(x), # number of traffic-related pollutants
+             L = NCOL(x2), # number of non-traffic pollutants
+             M = NCOL(x3), # number of covariates
+             x = x, # traffic-related pollutants
+             x2 = x2, # non-traffic pollutants
+             x3 = x3, # covariates
+             ck = get(datasets[j])$ck) # case or control marker
+      assign(model_current, stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data))
+    }  
+    
+    # EC single traffic pollutant model
+    if(i %in% c(105)){ 
+      # traffic pollutants
+      x <- model.matrix(ck ~ EC, data=get(datasets[j]))
+      x <- as.data.frame(x[,c(2:ncol(x))]) # get rid of intercept column
+      # non-traffic pollutants
+      x2 <- model.matrix(ck ~ PM25, data=get(datasets[j]))
+      x2 <- as.data.frame(x2[,c(2:ncol(x2))]) # get rid of intercept column
+      # covariates
+      x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]))
+      x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+      data <- 
+        list(N = nrow(x), # number of total cases and controls
+             nr = length(unique(get(datasets[j])$nr)), # number of groups 
+             grp = get(datasets[j])$nr, # group number
+             K = NCOL(x), # number of traffic-related pollutants
+             L = NCOL(x2), # number of non-traffic pollutants
+             M = NCOL(x3), # number of covariates
+             x = x, # traffic-related pollutants
+             x2 = x2, # non-traffic pollutants
+             x3 = x3, # covariates
+             ck = get(datasets[j])$ck) # case or control marker
+      assign(model_current, stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data))
+    }   
+    
+    # Bayesian conditional logistic with natural spline on parish SES in R-STAN ARM
+    if(i %in% c(116)){ 
+      fml116 = ck ~
+        family_SES +
+        place_birth +
+        civst +
+        residence +
+        splines::ns(parish_ses, df=3) +
+        PM25 + CO + EC + O3 + NOX
+      assign(model_current, clogit_stan_run(fml116, get(datasets[j])))
+    }
+    # Main model but with natural spline on parish SES (aborted for now)
+    # if(i %in% c(116)){ 
+    #   # traffic pollutants
+    #   x <- model.matrix(ck ~ NOX + CO + EC, data=get(datasets[j]) %>% tidyr::drop_na(parish_ses))
+    #   x <- x[,c(2:ncol(x))] # get rid of intercept column
+    #   # non-traffic pollutants
+    #   x2 <- model.matrix(ck ~ PM25, data=get(datasets[j]) %>% tidyr::drop_na(parish_ses))
+    #   x2 <- x2[,c(2:ncol(x2))] # get rid of intercept column
+    #   # covariates
+    #   x3 <- model.matrix(ck ~ family_SES +  place_birth + civst + residence, data=get(datasets[j]) %>% tidyr::drop_na(parish_ses))
+    #   x3 <- x3[,c(2:ncol(x3))] # get rid of intercept column
+    #   # parish SES
+    #   x4 <- model.matrix(ck ~ splines::ns(parish_ses, df=3), data=get(datasets[j]) %>% tidyr::drop_na(parish_ses)) # creating the natural spline with chosen degrees of freedom
+    #   x4 <- x4[,c(2:ncol(x4))] # get rid of intercept column
+    #   x4 <- t(x4) # transpose for input into model
+    #   num_df = nrow(x4) # number of degrees of freedom of natural spline
+    #   data <- 
+    #     list(N = nrow(x), # number of total cases and controls
+    #          nr = length(unique((get(datasets[j])%>% tidyr::drop_na(parish_ses))$nr)), # number of groups 
+    #          grp = (get(datasets[j])%>% tidyr::drop_na(parish_ses))$nr, # group number
+    #          K = NCOL(x), # number of traffic-related pollutants
+    #          L = NCOL(x2), # number of non-traffic pollutants
+    #          M = NCOL(x3), # number of covariates
+    #          num_df = num_df, # number of degrees of freedom of natural spline
+    #          x = x, # traffic-related pollutants
+    #          x2 = x2, # non-traffic pollutants
+    #          x3 = x3, # covariates
+    #          x4 = x4, # parish SES
+    #          ck = (get(datasets[j])%>% tidyr::drop_na(parish_ses))$ck) # case or control marker
+    # 
+    #     assign(model_current, stan(file = paste0('code/models/stan/fml',i,'.stan'), data = data, iter=50))
+    # } 
+       
+  # save model  
+  saveRDS(get(model_current),paste0(output.folder,model_current,'.rds'))
+  print(paste0(model_current,' finished!'))
+  }}}
+``` 
+
+# Run entire set of models dummy for live running (only relevant for when running models)
+```{r include=FALSE}
+
+```

@@ -1,0 +1,47 @@
+---
+title: "Analyse fit R-STAN model fits with shinystan"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Source functions to process results and load STAN results
+```{r include=FALSE}
+source(paste0(model.processing.folder,'d_00_model_processing_functions.R'))
+
+# list of models
+fmls = paste0('fml',c(1:116))
+datasets = c('data_1yr', 'data_5yrs','data_10yrs')
+
+# loop through models and datasets with various models
+for(j in c(1:length(datasets))){
+  for(i in c(101:116)){
+    model_current <- paste0('mod','_',fmls[i],'_',datasets[j])
+    assign(model_current, readRDS(paste0(output.folder,model_current,'.rds')))
+  }}
+```
+
+# Load into shinystan to assess fit (using one as an example but can mess around with it)
+```{r include=FALSE}
+my_sso <- launch_shinystan(mod_fml101_data_5yrs)
+```

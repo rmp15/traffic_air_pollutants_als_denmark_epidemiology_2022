@@ -1,0 +1,153 @@
+---
+title: "Prepare participant data"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Reading in patient and parish data
+```{r}
+# Load project with patient data
+load(paste0(raw_data_files, "ALS_desc_1989_2013_1989_5_2k.RData"))
+patient_data <- ALS_desc_1989_2013_1989_5_2k 
+
+summary(patient_data)
+
+# load parish ses data
+parish_ses <- read_sas(paste0(raw_data_files, "sogn_udd_2009b_1R.sas7bdat"), NULL)
+```
+
+# Defining variables for analysis
+## Converting categorical variables to factors and labeling the factors based on dictionary
+```{r include=FALSE}
+patient_data = patient_data %>%
+  mutate(diagyr=year(diagdat))
+patient_data$sex <- as.factor(patient_data$sex)
+patient_data$social <-factor(patient_data$social)
+patient_data$status <-factor(patient_data$status)
+patient_data$pattype<-factor(patient_data$pattype)
+patient_data$civst <- factor(patient_data$civst)
+patient_data$ck <- factor(patient_data$ck)
+patient_data$aegtesocial <- as.factor(patient_data$aegtesocial)
+patient_data$diag<-as.factor(patient_data$diag)
+patient_data$diagyr <- as.factor(patient_data$diagyr)
+```
+
+## Coding the NA values
+```{r include=FALSE}
+#namaker converts the empty strings to NA
+namaker<- function(a){
+  ifelse(a==""|a=="-"|a=="----"|a==" -",is.na(a)==TRUE,a)
+    }
+
+#converting the missing codes to NA
+patient_data$social <- ifelse(patient_data$social==9,NA,patient_data$social)
+patient_data$aegtesocial <- ifelse(patient_data$aegtesocial==9,NA,patient_data$aegtesocial)
+```
+
+## Calculating age at diagnosis
+```{r}
+patient_data$age_diag = time_length(difftime(patient_data$diagdat, patient_data$bdate), unit = "years")
+```
+
+## Calculating place of birth 
+```{r}
+patient_data <- patient_data %>%
+mutate(place_birth = case_when(geokode >= 52 & geokode <= 62 ~ "foreign",
+                                 geokode == 99 | geokode == 10 ~ "unknown",
+                                 geokode > 1 & geokode <= 4 ~ "other_cities",
+                                 geokode == 1 ~ "copenhagen",
+                                 geokode >= 5 & geokode <= 9 ~ "other_dk",
+                                 geokode == 51 ~ "greenland"),
+         place_birth = as.factor(place_birth))
+
+summary(patient_data)
+```
+
+# Creating a variable to categorize participants based on place of residence at time of diagnosis based on zipcodes
+# Based on https://postal-codes.cybo.com/denmark/
+# Based on Denmark cities larger than 50,000 (https://worldpopulationreview.com/countries/cities/denmark)
+```{r}
+patient_data <- patient_data %>%
+ mutate(residence = if_else(postnr == 3950 |
+                            postnr == 3985 |
+                            postnr == 3952 |
+                            postnr == 3910 |
+                            postnr == 3912 |
+                            postnr == 3921 |
+                            postnr == 3905 |
+                            postnr == 3971 |
+                            postnr == 3951 |
+                            postnr == 3911 |
+                            postnr == 3913 |
+                            postnr == 3919 |
+                            postnr == 3984 |
+                            postnr == 3980 |
+                            postnr == 3930 |
+                            postnr == 3982 |
+                            postnr == 3923 |
+                            postnr == 3940 |
+                            postnr == 3964 |
+                            postnr == 3953 |
+                            postnr == 3992 |
+                            postnr == 3962, "Greenland",
+                    if_else(postnr >= 1050 & postnr <= 4050, "Greater Copenhagen", # Copenhagen, Capital Region of Denmark
+                    if_else(postnr >= 8000 & postnr <= 8381, "Big cities of Denmark>10,000", # Aarhus
+                    if_else(postnr >= 5000 & postnr <= 5320, "Big cities of Denmark>10,000", # Odense
+                    if_else(postnr >= 9000 & postnr <= 9220, "Big cities of Denmark>10,000", # Aalborg
+                    if_else(postnr >= 6700 & postnr <= 6715, "Big cities of Denmark>10,000", # Esbjerg
+                    if_else(postnr >= 8900 & postnr < 8960,  "Big cities of Denmark>10,000", # Randers
+                    if_else(postnr == 6000, "Big cities of Denmark>10,000",                  # Kolding
+                    if_else(postnr == 7100 | postnr == 7120, "Big cities of Denmark>10,000", # Vejle
+                    if_else(postnr == 8700, "Big cities of Denmark>10,000", # Horsens
+                    if_else(postnr == 8830, "Big cities of Denmark>10,000", # Randers
+                            "Rest of Denmark")))))))))))) %>%
+  mutate(residence = replace_na(residence, "Unknown")) %>%
+  mutate(residence = as.factor(residence))
+
+table(patient_data$residence)
+
+summary(patient_data)
+
+patient_data_residence_na = patient_data %>% filter(residence=='Unknown')
+
+print(patient_data_residence_na)
+```
+
+# (previous code now unused)
+#Creating a variable to categorize participants based on place of residence at time of diagnosis based on zipcodes
+## Alternate residence 
+```{r}
+# patient_data$residence <- ifelse(patient_data$postnr>=1000 & patient_data$postnr<2500, 1, ifelse(patient_data$postnr==8722|patient_data$postnr==4690|patient_data$postnr==2800|patient_data$postnr==8300|patient_data$postnr==2791|patient_data$postnr==9500|patient_data$postnr==2640|patient_data$postnr==7600|patient_data$postnr==3060|patient_data$postnr==9700|patient_data$postnr==4760|patient_data$postnr==3300|patient_data$postnr==6800|patient_data$postnr==7700|patient_data$postnr==3500|patient_data$postnr==2625|patient_data$postnr==2665|patient_data$postnr==8660|patient_data$postnr==5500|patient_data$postnr==3700|patient_data$postnr==4900|patient_data$postnr==8500|patient_data$postnr==3600|patient_data$postnr==7430|patient_data$postnr==2680|patient_data$postnr==4220|patient_data$postnr==5800|patient_data$postnr==4400|patient_data$postnr==6200|patient_data$postnr==4800|patient_data$postnr==3520|patient_data$postnr==3460|patient_data$postnr==2635|patient_data$postnr==3660|patient_data$postnr==4100|patient_data$postnr==4129|patient_data$postnr==2600|patient_data$postnr==7800|patient_data$postnr==6100|patient_data$postnr==9400|patient_data$postnr==9900|patient_data$postnr==4300|patient_data$postnr==9800|patient_data$postnr==6400|patient_data$postnr==5700|patient_data$postnr==2610|patient_data$postnr==2620|patient_data$postnr==3400|patient_data$postnr==2630|patient_data$postnr==4200|patient_data$postnr==7500|patient_data$postnr==4600|patient_data$postnr==8800|patient_data$postnr==3000|patient_data$postnr==2970|patient_data$postnr==7000|patient_data$postnr==7007|patient_data$postnr==7029|patient_data$postnr==2720|patient_data$postnr==2750|patient_data$postnr==2920|patient_data$postnr==4700|patient_data$postnr==8600|patient_data$postnr==4000|patient_data$postnr==7400|patient_data$postnr==7429|patient_data$postnr==7429|patient_data$postnr==2670|patient_data$postnr==2650|patient_data$postnr==8700|patient_data$postnr==7100|patient_data$postnr==7120|patient_data$postnr==6000|patient_data$postnr==8960|patient_data$postnr==8900|patient_data$postnr==6715|patient_data$postnr==6700|patient_data$postnr==9220|patient_data$postnr==9000|patient_data$postnr==5270|patient_data$postnr==5000|patient_data$postnr==8000|patient_data$postnr==8210, 2,ifelse(patient_data$postnr>=3900 & patient_data$postnr<3993,3,ifelse(is.na(patient_data$postnr),5,4))) ) 
+# patient_data$residence <- ifelse(is.na(patient_data$postnr),5,patient_data$residence)
+# patient_data$residence<- factor(patient_data$residence,levels=c('1','2','3','4','5'), labels=c("Greater Copenhagen", "Big cities of Denmark>10,000","Greenland", "Rest of Denmark","Unknown"))
+# 
+# table(patient_data$residence)
+# 
+# summary(patient_data)
+```
+
+# Save output
+```{r}
+saveRDS(patient_data, paste0(raw_data_files,"patient_data_uniform_complete.rds"))
+```

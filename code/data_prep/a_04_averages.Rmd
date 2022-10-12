@@ -1,0 +1,132 @@
+---
+title: "Find overall averages of exposure windows"
+author: "Robbie Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+For all dataframes, we created averages for given exposure period and added the family income variable and removed the CO-urb variable that we forgot to remove previously. Family income (family_SES) is base in the highest social when married and in the individual social if single. 
+
+- We also categorized the place of birth into these categories:
+1) Greater Copenhagen
+2) Other cities: includes Aarhus, Odense, and other DK cities
+3) Other DK: includes everything else other than major cities
+4) Foreign: includes non danish regions
+5) Unknown: unknown DK or unknown
+6) Greenland: includes Greenland
+
+- The county of residence was also categorized from zip code to the following five categories: 
+1) Greater Copenhagen
+2) Other cities: includes Aarhus, Odense, and other DK cities
+3) Other_DK: includes everything else other than major cities
+4) Foreign: includes non danish regions
+5) Unknown: unknown DK or unknown
+6) Greenland: includes Greenland
+
+# 1-year exposure averages
+```{r}
+avg_1yr <- read_csv(paste0(robbie_datasets, "one_yr_filtered_data.csv")) %>%
+  group_by(nr, lobnr) %>%
+  mutate(PM25_1yr = mean(PM25_str),
+         CO_1yr = mean(CO_str),
+         NO2_1yr = mean(NO2_str),
+         NOX_1yr = mean(NOX_str),
+         O3_1yr = mean(O3_str),
+         PM10_1yr = mean(PM10_str),
+         EC_1yr = mean (EC_str),
+         family_SES = as.factor(family_SES)) %>%
+  ungroup() %>%
+   dplyr::select(-year_gap, -one_year, -five_years, -ten_years, -PM25_str, -CO_str, -EC_str, -NOX_str, -O3_str, -PM10_str, -NO2_str, -date_exp)%>%
+  unique() 
+
+summary(avg_1yr)
+
+# check that we have the correct number of cases 
+check_cases <- avg_1yr %>%
+  group_by(nr) %>%
+  summarise()
+
+print(nrow(check_cases))
+
+# save data file 
+write_csv(avg_1yr, paste0(robbie_datasets, "one_yr_avg_data.csv"))
+```
+
+# 5-year exposure averages
+```{r}
+avg_5yr <- read_csv(paste0(robbie_datasets, "five_yrs_filtered_data.csv")) %>%
+  group_by(nr, lobnr) %>%
+  mutate(PM25_5yr = mean(PM25_str),
+         CO_5yr = mean(CO_str),
+         NO2_5yr = mean(NO2_str),
+         NOX_5yr = mean(NOX_str),
+         O3_5yr = mean(O3_str),
+         PM10_5yr = mean(PM10_str),
+         EC_5yr = mean (EC_str),
+         family_SES = as.factor(family_SES)) %>%
+  ungroup() %>%
+   dplyr::select(-year_gap, -one_year, -five_years, -ten_years, -PM25_str, -CO_str, -EC_str, -NOX_str, -O3_str, -PM10_str, -NO2_str, -date_exp)%>%
+  unique()
+    
+summary(avg_5yr)
+
+# check that we have the correct number of cases 
+check_cases <- avg_5yr %>%
+  group_by(nr) %>%
+  summarise()
+
+print(nrow(check_cases))
+
+# save data file 
+write_csv(avg_5yr, paste0(robbie_datasets, "five_yrs_avg_data.csv"))
+```
+
+# 10-year exposure averages
+```{r}
+
+avg_10yr <- read_csv(paste0(robbie_datasets, "ten_yrs_filtered_data.csv")) %>%
+  group_by(nr, lobnr) %>%
+  mutate(PM25_10yr = mean(PM25_str),
+         CO_10yr = mean(CO_str),
+         NO2_10yr = mean(NO2_str),
+         NOX_10yr = mean(NOX_str),
+         O3_10yr = mean(O3_str),
+         PM10_10yr = mean(PM10_str),
+         EC_10yr = mean (EC_str),
+         family_SES = as.factor(family_SES)) %>%
+  ungroup() %>%
+   dplyr::select(-year_gap, -one_year, -five_years, -ten_years, -PM25_str, -CO_str, -EC_str, -NOX_str, -O3_str, -PM10_str, -NO2_str, -date_exp)%>%
+  unique()
+
+summary(avg_10yr)
+
+# check that we have the correct number of cases 
+check_cases <- avg_10yr %>%
+  group_by(nr) %>%
+  summarise()
+
+print(nrow(check_cases))
+
+# save data file 
+write_csv(avg_10yr, paste0(robbie_datasets, "ten_yrs_avg_data.csv"))
+```

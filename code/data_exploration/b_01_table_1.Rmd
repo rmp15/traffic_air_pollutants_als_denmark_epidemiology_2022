@@ -1,0 +1,106 @@
+---
+title: "Table 1 for paper"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load data
+```{r include=FALSE}
+source(paste0(models.folder,'c_00_data_loading.R'))
+```
+
+# How many cases and controls per averaging method
+```{r include=FALSE}
+cases_total = 4011; controls_total = cases_total*5
+
+print(paste0('1-year averaging: ',sum(data_1yr$ck),' cases (',round(100*sum(data_1yr$ck)/cases_total,1),'%) and ', nrow(data_1yr)-sum(data_1yr$ck), ' (',round(100*(nrow(data_1yr)-sum(data_1yr$ck))/controls_total,1),'%) controls'))
+
+print(paste0('5-year averaging: ',sum(data_5yrs$ck),' cases (',round(100*sum(data_5yrs$ck)/cases_total,1),'%) and ', nrow(data_5yrs)-sum(data_5yrs$ck), ' (',round(100*(nrow(data_5yrs)-sum(data_5yrs$ck))/controls_total,1),'%) controls'))
+
+print(paste0('10-year averaging: ',sum(data_10yrs$ck),' cases (',round(100*sum(data_10yrs$ck)/cases_total,1),'%) and ', nrow(data_10yrs)-sum(data_10yrs$ck), ' (',round(100*(nrow(data_10yrs)-sum(data_10yrs$ck))/controls_total,1),'%) controls'))
+```
+
+# Table 1 prepare
+```{r include=FALSE}
+# This link is super useful 
+# http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html
+table_1 = data_5yrs %>%  
+  ungroup(nr) %>%
+  dplyr::select(ck, age_diag, sex, family_SES, place_birth, civst, residence) %>%
+  mutate(ck=recode_factor(ck, 
+         `1`='Case',
+         `0`='Control')) %>%
+  mutate(sex=recode_factor(sex, 
+         `2`='Female',
+         `1`='Male')) %>%
+  mutate(family_SES=recode_factor(family_SES, 
+         `1`='Group 1 (Highest)',
+         `2`='Group 2',
+         `3`='Group 3',
+         `4`='Group 4',
+         `5`='Group 5 (Lowest)',
+         `9`='Group 9 (Unknown)')) %>%
+  mutate(civst=recode_factor(civst, 
+         `4`='Married',
+         `3`='Divorced',
+         `2`='Widower',
+         `1`='Never married')) %>% 
+  mutate(residence=recode_factor(residence, 
+   `Greater Copenhagen`='Greater Copenhagen',
+   `Big cities of Denmark>10,000`='Big cities of Denmark',
+   `Rest of Denmark`='Rest of Denmark',
+   `Greenland`='Greenland')) %>%
+  mutate(place_birth=recode_factor(place_birth, 
+       `copenhagen`='Greater Copenhagen',
+       `other_cities`='Big cities of Denmark',
+       `other_dk`='Rest of Denmark',
+       `greenland`='Greenland',
+       `foreign`='Foreign',
+       `unknown`='Unknown')) %>%
+  tbl_summary(missing = "no",
+              label = list(age_diag ~ "Average age (years)",
+                           sex ~ "Sex",
+                           family_SES ~ "Family SES",
+                           place_birth ~ "Place of birth",
+                           civst ~ "Civil status",
+                           residence ~ "Place of residence"),
+              by = ck,
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+  add_overall() %>%
+  bold_labels()
+```
+
+# Table 1 save as Word output
+```{r include=FALSE}
+table_1 %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(path = paste0(table1.folder,'table1.docx'))
+```
+
+# Table 1 save as gt
+```{r include=TRUE}
+table_1 %>%
+  as_gt() %>%
+  tab_header(title = "Subject demographics")
+```

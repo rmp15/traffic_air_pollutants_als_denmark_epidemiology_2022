@@ -1,0 +1,95 @@
+---
+title: "Combining pollution and hospitalization data into a single dataset"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load original hospitalization and pollution files and tidying before merging
+```{r}
+# Load project with pollutant files
+load(paste0(raw_data_files, "ALS_Final_pol_1989-2013_1989_5_2k.RData"))
+pollutant_time_series <- `ALS_Final_pol_1989-2013_1989_5_2k`
+
+# establish which values are missing
+which(is.na(pollutant_time_series$PM25_str))
+missing <- as.data.frame(colSums(is.na(pollutant_time_series)))
+
+summary(pollutant_time_series)
+
+# tidying patient data
+patient_data <- readRDS(paste0(raw_data_files, "patient_data_uniform_complete.rds"), NULL) %>%
+  mutate(year_gap = diagdat - years(1), # one year gap pre diagnosis to match median length of time after ALS onset
+         one_year = year_gap - years(1), # date limit for 1 year average
+         five_years = year_gap - years(5), # date limit for 5 year average
+         ten_years = year_gap - years(10)) %>%  #date limit for 10 year average
+  dplyr::select(nr, lobnr, ck, diagtype, diagdat, year_gap, one_year, five_years, ten_years, everything()) %>%      
+  dplyr::select(-daars3, -daars4, -daars5) %>% # -familyses2
+  dplyr::rename(family_SES = famses) %>%
+  mutate(birth_year = year(bdate),
+  residence = as.character(residence),
+  residence = tidyr::replace_na(residence, "unknown"),
+  residence = as.factor(residence))
+
+summary(patient_data)
+
+# cases of ALS
+cases <- patient_data %>%
+  dplyr::filter(ck == 1) %>%
+ dplyr::group_by(nr) %>%
+  summarise(count = n())
+
+# matched controls
+contrl <- patient_data %>%
+ dplyr:: filter(ck == 0) %>%
+  dplyr::group_by(nr, lobnr) %>%
+  summarise(count = n())
+
+# select "str" pollutants, which are the relevant exposures from the pollution data we were given
+pollution_data <- pollutant_time_series %>%
+  mutate(date_exp = make_date(year, month)) %>%
+  dplyr::select(lobnr, nr, date_exp, PM25_str, CO_str, EC_str, NO2_str, NOX_str, O3_str, PM10_str)
+```
+
+# Merge hospitalization and exposure date
+```{r}
+full_dataset <- full_join(patient_data, pollution_data, by = c("nr", "lobnr"))
+summary(full_dataset)
+
+# merged cases of ALS
+cases_full <- full_dataset %>%
+  dplyr::filter(ck == 1) %>%
+ dplyr::group_by(nr) %>%
+  summarise(count = n())
+
+# merged matched controls
+contrl_full <- full_dataset %>%
+ dplyr:: filter(ck == 0) %>%
+  dplyr::group_by(nr, lobnr) %>%
+  summarise(count = n())
+```
+
+# Save file of hospitalizations and pollution joined dataset
+```{r}
+saveRDS(full_dataset, paste0(robbie_datasets, "joined_datasets.rds")) 
+```

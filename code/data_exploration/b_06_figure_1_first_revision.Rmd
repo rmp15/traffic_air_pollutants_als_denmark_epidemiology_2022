@@ -1,0 +1,200 @@
+---
+title: "Figure 1 (first revision)"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load data
+```{r include=FALSE}
+source(paste0(models.folder,'c_00_data_loading_non_standardised.R'))
+```
+
+# Figure 1 prepare
+
+# Correlation heatmap for cases and controls together 
+```{r}
+cases_controls_process = function(data){
+  data_5yrs_pollutants = data %>%
+  ungroup(nr) %>%
+  select(NOX,CO,EC,PM25,O3)
+
+#names = c('NO[X]','CO', 'EC', expression(atop('non-EC','PM'[2.5])),'O[3]')
+names = c('NO[X]','CO', 'EC', expression('non-EC PM'[2.5]),'O[3]')
+
+colnames(data_5yrs_pollutants) = names
+
+v.matrix <- round(cor(data_5yrs_pollutants, use = "pairwise.complete.obs", 
+                    method = c("pearson")),2)
+
+v.matrix[upper.tri(v.matrix)] <- NA          
+
+viz.cormat <- reshape2::melt(v.matrix, na.rm = TRUE) %>% 
+  dplyr::rename(Correlation = value) 
+
+# Visualization
+cases_and_controls <- viz.cormat %>%
+    ggplot(aes(Var1, Var2, fill = Correlation)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient2(low = "light blue", high = "red", mid = "white", 
+        midpoint = 0.5,  space = "Lab", name = "Person\nCorrelation") +
+      scale_x_discrete(labels = scales::label_parse()) +
+      scale_y_discrete(labels = scales::label_parse()) +
+      ggtitle('Overall') + coord_equal() +
+      geom_text(aes(Var1, Var2, label = Correlation), color = "black", size = 2) +
+      theme(
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.text.y = element_text(vjust = 1, size = 8, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        legend.position = "None") 
+}
+
+cases_and_controls_1yr = cases_controls_process(data_1yr)
+cases_and_controls_5yrs = cases_controls_process(data_5yrs)
+cases_and_controls_10yrs = cases_controls_process(data_10yrs)
+```
+
+# Correlation heatmap for cases
+```{r}
+cases_process = function(data){
+  data_5yrs_pollutants = data_5yrs %>%
+    filter(ck==1) %>%
+    ungroup(nr) %>%
+    select(NOX,CO,EC,PM25,O3)
+  
+  #names = c('NO[X]','CO', 'EC', expression(atop('non-EC','PM'[2.5])),'O[3]')
+names = c('NO[X]','CO', 'EC', expression('non-EC PM'[2.5]),'O[3]')
+  
+  colnames(data_5yrs_pollutants) = names
+  
+  v.matrix <- round(cor(data_5yrs_pollutants, use = "pairwise.complete.obs", 
+                      method = c("pearson")),2)
+  
+  v.matrix[upper.tri(v.matrix)] <- NA          
+  
+  viz.cormat <- reshape2::melt(v.matrix, na.rm = TRUE) %>% 
+    dplyr::rename(Correlation = value) 
+  
+  #Visualization
+  cases <- viz.cormat %>%
+      ggplot(aes(Var1, Var2, fill = Correlation)) +
+        geom_tile(color = "white") +
+        scale_fill_gradient2(low = "light blue", high = "red", mid = "white", 
+          midpoint = 0.5,  space = "Lab",name = "Person\nCorrelation") +
+        scale_x_discrete(labels = scales::label_parse()) +
+        scale_y_discrete(labels = scales::label_parse()) +
+      ggtitle('Cases') + coord_equal() +
+      geom_text(aes(Var1, Var2, label = Correlation), color = "black", size = 2) +
+      theme(
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.text.y = element_text(vjust = 1, size = 8, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        legend.position = "None") 
+}
+
+cases_1yr = cases_process(data_1yr)
+cases_5yrs = cases_process(data_5yrs)
+cases_10yrs = cases_process(data_10yrs)
+```
+
+# Correlation heatmap for controls
+```{r}
+controls_process = function(data){
+  data_5yrs_pollutants = data %>%
+    filter(ck==0) %>%
+    ungroup(nr) %>%
+    select(NOX,CO,EC,PM25,O3)
+  
+  #names = c('NO[X]','CO', 'EC', expression(atop('non-EC','PM'[2.5])),'O[3]')
+names = c('NO[X]','CO', 'EC', expression('non-EC PM'[2.5]),'O[3]')
+  
+  colnames(data_5yrs_pollutants) = names
+  
+  v.matrix <- round(cor(data_5yrs_pollutants, use = "pairwise.complete.obs", 
+                      method = c("pearson")),2)
+  
+  v.matrix[upper.tri(v.matrix)] <- NA          
+  
+  viz.cormat <- reshape2::melt(v.matrix, na.rm = TRUE) %>% 
+    dplyr::rename(Correlation = value) 
+  
+  #Visualization
+  controls <- viz.cormat %>%
+      ggplot(aes(Var1, Var2, fill = Correlation)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient2(low = "light blue", high = "red", mid = "white", 
+        midpoint = 0.5,  space = "Lab", name = "Person\nCorrelation") +
+        scale_x_discrete(labels = scales::label_parse()) +
+        scale_y_discrete(labels = scales::label_parse()) +
+      ggtitle('Controls') + coord_equal() +
+      geom_text(aes(Var1, Var2, label = Correlation), color = "black", size = 2) +
+      theme(
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1),
+        axis.text.y = element_text(vjust = 1, size = 8, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 10),
+        plot.margin=unit(c(0,0,0,0), "cm"),
+        legend.position = "None") 
+}
+
+controls_1yr = controls_process(data_1yr)
+controls_5yrs = controls_process(data_5yrs)
+controls_10yrs = controls_process(data_10yrs)
+```
+
+# Save output of plots
+```{r}
+#grid_arrange_1yr = grid.arrange(cases_and_controls_1yr,cases_1yr,controls_1yr,nrow=1, '1-year average')
+#grid_arrange_5yrs = grid.arrange(cases_and_controls_5yrs,cases_5yrs,controls_5yrs,nrow=1, top='5-year average')
+#grid_arrange_10yrs = grid.arrange(cases_and_controls_10yrs,cases_10yrs,controls_10yrs,nrow=1, top='10-year average')
+
+pdf(paste0(figure1.folder,'figure1_first_revision.pdf'))
+grid.arrange(arrangeGrob(cases_and_controls_1yr,cases_1yr,controls_1yr, top='1-year average', nrow=1),
+             arrangeGrob(cases_and_controls_5yrs,cases_5yrs,controls_5yrs, top='5-year average', nrow=1),
+             arrangeGrob(cases_and_controls_10yrs,cases_10yrs,controls_10yrs, top='10-year average', nrow=1))
+#grid.arrange(grid_arrange_1yr,grid_arrange_5yrs, grid_arrange_10yrs, nrow=3)
+dev.off()
+```

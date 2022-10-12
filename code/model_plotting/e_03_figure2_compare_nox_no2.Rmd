@@ -1,0 +1,141 @@
+---
+title: "Compare NO2 and NOX fits"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load original data 
+```{r}
+dir.output = paste0(figures.folder,'figure2/')
+ifelse(!dir.exists(dir.output), dir.create(dir.output, recursive=TRUE), FALSE)
+dat.all = read.csv(paste0(dir.output,'/multi_pollutant_output.csv')) %>%
+  filter(mod=='fml101')
+```
+
+# Load NO2 model output data and merge with original model output
+```{r}
+dat.all.no2 = read.csv(paste0(dir.output,'/multi_pollutant_output_no2.csv')) %>%
+  filter(mod=='fml101') %>%
+  select(odds.mean,odds.ll,odds.ul) %>%
+  rename(odds.mean.no2=odds.mean,
+         odds.ll.no2=odds.ll,
+         odds.ul.no2=odds.ul)
+
+dat.all = cbind(dat.all, dat.all.no2)
+```
+
+# Fix format of data for plotting 
+```{r}
+dat.all = dat.all %>%
+mutate(mod_long =  ifelse(mod == 'fml101', 'A. Main model',
+                                               NA)) %>%
+  mutate(data_type = ifelse(data == 'data_1yr', '1-year average',
+                            ifelse(data == 'data_5yrs', '5-year average',
+                                   ifelse(data == 'data_10yrs', '10-year average', NA)))) %>%
+  mutate(data_type = factor(data_type, levels = c('1-year average','5-year average','10-year average'))) %>%
+  mutate(pollutant = ifelse(pollutant == 'PM25', quote('non-EC_PM[2.5]'),
+                     ifelse(pollutant== 'O3', 'O[3]',
+                     ifelse(pollutant== 'NOX', 'NO[X]/NO[2]',
+                     ifelse(pollutant == 'Traffic Total', 'Traffic[Joint]',
+                     ifelse(pollutant == 'Traffic Average', 'Traffic[Average]',
+                            pollutant)))))) %>%
+  mutate(pollutant = factor(pollutant, levels = rev(c('Traffic[Average]','Traffic[Joint]', 'EC', 'NO[X]/NO[2]', 'CO',  quote('non-EC_PM[2.5]'),'PM[2.5]', 'O[3]'))))
+
+```
+
+# Main model by SD for all averaging lengths
+```{r}
+ 
+p = ggplot(data=subset(dat.all,(mod%in%c('fml101')))) +
+    geom_point(aes(x=pollutant,y=odds.mean),size=1,shape=16, position=position_dodge(width=0.5)) +
+    geom_errorbar(aes(x=pollutant,ymax=odds.ul,ymin=odds.ll),width=.2,size=0.5, position=position_dodge(width=0.5)) +
+    facet_grid(~data_type) +
+    geom_hline(yintercept=0,linetype='dotted') +
+    xlab('Pollutant') + ylab('Percentage change in odds of ALS diagnosis per SD increase') +
+    scale_y_continuous(labels=scales::percent_format(accuracy=1)) +
+    scale_x_discrete(labels = rlang::parse_exprs) + 
+    coord_flip() +
+    labs(colour="") +
+    guides(colour=guide_legend(nrow=4,byrow=TRUE)) +
+    theme_bw() + theme(text = element_text(size = 20),legend.text=element_text(size=7.5),
+    panel.grid.major = element_blank(),axis.text.x = element_text(angle=0), axis.text.y = element_text(size=20),
+    plot.title = element_text(hjust = 0.5), panel.background = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+    panel.border = element_rect(colour = "black"),strip.background = element_blank(),
+    legend.position = 'bottom',legend.justification='center',
+    legend.background = element_rect(fill="white", size=.5, linetype="dotted"))
+
+print(p)
+```
+
+# Model with NO2 isntead of NOX by SD for all averaging lengths
+```{r}
+ 
+p = ggplot(data=subset(dat.all,(mod%in%c('fml101')))) +
+    geom_point(aes(x=pollutant,y=odds.mean.no2),size=1,shape=16, position=position_dodge(width=0.5)) +
+    geom_errorbar(aes(x=pollutant,ymax=odds.ul.no2,ymin=odds.ll.no2),width=.2,size=0.5, position=position_dodge(width=0.5)) +
+    facet_grid(~data_type) +
+    geom_hline(yintercept=0,linetype='dotted') +
+    xlab('Pollutant') + ylab('Percentage change in odds of ALS diagnosis per SD increase') +
+    scale_y_continuous(labels=scales::percent_format(accuracy=1)) +
+    scale_x_discrete(labels = rlang::parse_exprs) + 
+    coord_flip() +
+    labs(colour="") +
+    guides(colour=guide_legend(nrow=4,byrow=TRUE)) +
+    theme_bw() + theme(text = element_text(size = 20),legend.text=element_text(size=7.5),
+    panel.grid.major = element_blank(),axis.text.x = element_text(angle=0), axis.text.y = element_text(size=20),
+    plot.title = element_text(hjust = 0.5), panel.background = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+    panel.border = element_rect(colour = "black"),strip.background = element_blank(),
+    legend.position = 'bottom',legend.justification='center',
+    legend.background = element_rect(fill="white", size=.5, linetype="dotted"))
+
+print(p)
+```
+
+# Plot results against each other
+```{r}
+ 
+p = ggplot(data=subset(dat.all,(mod%in%c('fml101')))) +
+    geom_point(aes(x=odds.mean,y=odds.mean.no2),size=1,shape=16) +
+    geom_errorbar(aes(x=odds.mean,ymax=odds.ul.no2,ymin=odds.ll.no2),width=0,size=0.5) +
+    geom_errorbarh(aes(y=odds.mean.no2,xmax=odds.ul,xmin=odds.ll),width=0,size=0.5) +
+    geom_abline(linetype='dotted') +
+    facet_wrap(~pollutant) +
+    xlab('Percentage change in odds of ALS diagnosis per SD increase') + ylab('Percentage change in odds of ALS diagnosis per SD increase\n(NO2 model)') +
+    scale_y_continuous(labels=scales::percent_format(accuracy=1)) +
+    scale_x_continuous(labels=scales::percent_format(accuracy=1)) +
+    coord_equal() +
+    labs(colour="") +
+    guides(colour=guide_legend(nrow=4,byrow=TRUE)) +
+    theme_bw() + theme(text = element_text(size = 20),legend.text=element_text(size=7.5),
+    panel.grid.major = element_blank(),axis.text.x = element_text(angle=0), axis.text.y = element_text(size=20),
+    plot.title = element_text(hjust = 0.5), panel.background = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+    panel.border = element_rect(colour = "black"),strip.background = element_blank(),
+    legend.position = 'bottom',legend.justification='center',
+    legend.background = element_rect(fill="white", size=.5, linetype="dotted"))
+
+print(p)
+```

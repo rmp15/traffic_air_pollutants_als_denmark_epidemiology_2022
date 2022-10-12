@@ -1,0 +1,128 @@
+---
+title: "Plot Figure 2 and eFigure"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load data 
+```{r}
+dir.output = paste0(figures.folder,'figure2/')
+ifelse(!dir.exists(dir.output), dir.create(dir.output, recursive=TRUE), FALSE)
+dat.all = read.csv(paste0(dir.output,'/multi_pollutant_output.csv'))
+```
+
+# Fix format of data for plotting 
+```{r}
+dat.all = dat.all %>%
+mutate(mod_long =  ifelse(mod == 'fml101', 'A. Main model',
+              ifelse(mod == 'fml102', 'B. Main model with O3',
+              ifelse(mod == 'fml103', 'D. NOX + PM2.5',
+              ifelse(mod == 'fml104', 'E. CO + PM2.5',
+              ifelse(mod == 'fml105', 'F. EC + PM2.5',
+              ifelse(mod == 'fml106', 'G. Main model with LKJ(2)',
+              ifelse(mod == 'fml107', 'H. Main model with LKJ(0.5)',
+              ifelse(mod == 'fml108', 'I. Main model with N(0,100)',
+              ifelse(mod == 'fml109', 'J. Main model with N(0,1)',
+              ifelse(mod == 'fml110', 'K. Main model with Cauchy(0,100)',
+              ifelse(mod == 'fml111', 'L. Main model with Cauchy(0,1)',
+              ifelse(mod == 'fml112', 'M. Main model with Lambda~N(0,100)',
+              ifelse(mod == 'fml113', 'N. Main model with Lambda~N(0,1)',
+              ifelse(mod == 'fml114', 'O. Main model with 10,000 iterations',
+              ifelse(mod == 'fml115', 'P. Main model with Lambda~N(0,100)\nand 10,000 iterations',
+              ifelse(mod == 'fml116',  'C. Main model with parish-level SES',
+                                               NA))))))))))))))))) %>%
+  mutate(data_type = ifelse(data == 'data_1yr', '1-year average',
+                            ifelse(data == 'data_5yrs', '5-year average',
+                                   ifelse(data == 'data_10yrs', '10-year average', NA)))) %>%
+  mutate(data_type = factor(data_type, levels = c('1-year average','5-year average','10-year average'))) %>%
+  mutate(pollutant = ifelse(pollutant == 'PM25', quote('non-EC_PM[2.5]'),
+                     ifelse(pollutant== 'O3', 'O[3]',
+                     ifelse(pollutant== 'NOX', 'NO[X]',
+                     ifelse(pollutant == 'Traffic Total', 'Traffic[Joint]',
+                     ifelse(pollutant == 'Traffic Average', 'Traffic[Average]',
+                            pollutant)))))) %>%
+  mutate(pollutant = factor(pollutant, levels = rev(c('EC', 'NO[X]', 'CO',  quote('non-EC_PM[2.5]'),'PM[2.5]', 'O[3]','Traffic[Joint]','Traffic[Average]' ))))
+
+```
+
+# Main model by SD for all averaging lengths
+```{r}
+ 
+p = ggplot(data=subset(dat.all,(mod%in%c('fml101')))) +
+    geom_point(aes(x=pollutant,y=odds.mean),size=3,shape=16, position=position_dodge(width=0.5)) +
+    geom_errorbar(aes(x=pollutant,ymax=odds.ul,ymin=odds.ll),width=.2,size=0.5, position=position_dodge(width=0.5)) +
+    facet_grid(~data_type) +
+    geom_hline(yintercept=0,linetype='dotted') +
+    xlab('Pollutant') + ylab('Percentage change in odds of ALS diagnosis per SD increase') +
+    scale_y_continuous(labels=scales::percent_format(accuracy=1)) +
+    scale_x_discrete(labels = rlang::parse_exprs) + 
+    coord_flip() +
+    labs(colour="") +
+    guides(colour=guide_legend(nrow=4,byrow=TRUE)) +
+    theme_bw() + theme(text = element_text(size = 20),legend.text=element_text(size=7.5),
+    panel.grid.major = element_blank(),axis.text.x = element_text(angle=0), axis.text.y = element_text(size=20),
+    plot.title = element_text(hjust = 0.5), panel.background = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+    panel.border = element_rect(colour = "black"),strip.background = element_blank(),
+    legend.position = 'bottom',legend.justification='center',
+    legend.background = element_rect(fill="white", size=.5, linetype="dotted"))
+
+print(p)
+
+pdf(paste0(dir.output,'/Figure2.pdf'),paper='a4r',height=0,width=0)
+print(p)
+dev.off()
+```
+
+# plot results with everything by SD
+```{r}
+ 
+p = ggplot(data=subset(dat.all,!(pollutant=='Traffic[Average]'&mod%in%c('fml112','fml113','fml115')))) +
+    geom_point(aes(x=pollutant,y=odds.mean,color=mod_long,shape=mod_long),size=0.7, position=position_dodge(width=0.9)) +
+    geom_errorbar(aes(x=pollutant,ymax=odds.ul,ymin=odds.ll,color=mod_long),width=0,size=0.5, position=position_dodge(width=0.9)) +
+    facet_grid(~data_type) +
+    geom_hline(yintercept=0,linetype='dotted') +
+    xlab('Pollutant') + ylab('Percentage change in odds of ALS diagnosis per SD increase') +
+    scale_y_continuous(labels=scales::percent_format(accuracy=1)) +
+    scale_x_discrete(labels = ggplot2:::parse_safe) + 
+    scale_shape_manual(values=seq(0,15)) +
+    #scale_color_manual() +
+    coord_flip() +
+    labs(colour="", shape="") +
+    guides(colour=guide_legend(nrow=4,byrow=TRUE)) +
+    theme_bw() + theme(text = element_text(size = 18),legend.text=element_text(size=9),
+    panel.grid.major = element_blank(),axis.text.x = element_text(angle=0), axis.text.y = element_text(size=10),
+    plot.margin=grid::unit(c(0,0,0,0), "mm"),
+    plot.title = element_text(hjust = 0.5), panel.background = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+    panel.border = element_rect(colour = "black"),strip.background = element_blank(),
+    legend.position = 'bottom',legend.justification='left',
+    legend.background = element_rect(fill="white", size=.5, linetype="dotted"))
+
+print(p)
+
+pdf(paste0(dir.output,'/eFigure.pdf'),paper='a4r',height=0,width=0)
+print(p)
+dev.off()
+```

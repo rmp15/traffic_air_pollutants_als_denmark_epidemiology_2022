@@ -1,0 +1,199 @@
+---
+title: "Table 3 for paper"
+author: "Robbie M Parks"
+date: "16/06/2022"
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Declare root directory, load folder locations, packages
+```{r include=FALSE}
+rm(list=ls())
+
+# Declare root directory, load folder locations packages
+project.folder <- paste0(print(here::here()),'/')
+source(paste0(project.folder,'0_00_create_folder_structure.R'))
+source(paste0(file.locations.folder,'file_locations.R'))
+source(paste0(packages.folder,'packages_to_load.R'))
+```
+
+# Load data
+```{r include=FALSE}
+source(paste0(models.folder,'c_00_data_loading_non_standardised.R'))
+```
+
+# Table 3 SES prepare
+```{r include=FALSE}
+# This link is super useful 
+# http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html
+table_3 = data_5yrs %>%  
+  ungroup(nr) %>%
+  group_by(family_SES) %>%
+  dplyr::filter(ck==0) %>%
+  dplyr::select(family_SES, NOX, CO, EC, PM25, O3) %>%
+  mutate(family_SES=recode_factor(family_SES, 
+         `1`='Group 1 (Highest)',
+         `2`='Group 2',
+         `3`='Group 3',
+         `4`='Group 4',
+         `5`='Group 5 (Lowest)',
+         `9`='Group 9 (Unknown)')) %>%
+  tbl_summary(missing = "no",
+              label = list(NOX ~ "NOX",
+                           CO ~ "CO",
+                           EC ~ "EC",
+                           PM25 ~ "non-EC PM2.5",
+                           O3 ~ "O3"),
+              by = family_SES,
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+  modify_header(label ~ "**Pollutant**") %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+# Table 3 save as Word output
+```{r include=FALSE}
+table_3 %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(path = paste0(table3.folder,'table3_SES.docx'))
+```
+
+# Table 3 save as gt
+```{r include=TRUE}
+table_3 %>%
+  as_gt() %>%
+  tab_header(title = "Pollutant concentrations")
+```
+
+# Table 3 Civil Status prepare
+```{r include=FALSE}
+# This link is super useful 
+# http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html
+table_3 = data_5yrs %>%  
+  ungroup(nr) %>%
+  group_by(civst) %>%
+  dplyr::filter(ck==0) %>%
+  dplyr::select(civst, NOX, CO, EC, PM25, O3) %>%
+  mutate(civst=recode_factor(civst, 
+         `4`='Married',
+         `3`='Divorced',
+         `2`='Widower',
+         `1`='Never married')) %>% 
+  tbl_summary(missing = "no",
+              label = list(NOX ~ "NOX",
+                           CO ~ "CO",
+                           EC ~ "EC",
+                           PM25 ~ "non-EC PM2.5",
+                           O3 ~ "O3"),
+              by = civst,
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+  modify_header(label ~ "**Pollutant**") %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+# Table 3 save as Word output
+```{r include=FALSE}
+table_3 %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(path = paste0(table3.folder,'table3_civst.docx'))
+```
+
+# Table 3 save as gt
+```{r include=TRUE}
+table_3 %>%
+  as_gt() %>%
+  tab_header(title = "Pollutant concentrations")
+```
+
+# Table 3 residences prepare
+```{r include=FALSE}
+# This link is super useful 
+# http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html
+table_3 = data_5yrs %>%  
+  ungroup(nr) %>%
+  group_by(residence) %>%
+  dplyr::filter(ck==0) %>%
+  dplyr::select(residence, NOX, CO, EC, PM25, O3) %>%
+  mutate(residence=recode_factor(residence, 
+   `Greater Copenhagen`='Greater Copenhagen',
+   `Big cities of Denmark>10,000`='Big cities of Denmark',
+   `Rest of Denmark`='Rest of Denmark',
+   `Greenland`='Greenland')) %>%
+  tbl_summary(missing = "no",
+              label = list(NOX ~ "NOX",
+                           CO ~ "CO",
+                           EC ~ "EC",
+                           PM25 ~ "non-EC PM2.5",
+                           O3 ~ "O3"),
+              by = residence,
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+  modify_header(label ~ "**Pollutant**") %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+# Table 3 save as Word output
+```{r include=FALSE}
+table_3 %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(path = paste0(table3.folder,'table3_residence.docx'))
+```
+
+# Table 3 save as gt
+```{r include=TRUE}
+table_3 %>%
+  as_gt() %>%
+  tab_header(title = "Pollutant concentrations")
+```
+
+# Table 3 place of birth prepare
+```{r include=FALSE}
+# This link is super useful 
+# http://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html
+table_3 = data_5yrs %>%  
+  ungroup(nr) %>%
+  group_by(place_birth) %>%
+  dplyr::filter(ck==0) %>%
+  dplyr::select(place_birth, NOX, CO, EC, PM25, O3) %>%
+  mutate(place_birth=recode_factor(place_birth, 
+       `copenhagen`='Greater Copenhagen',
+       `other_cities`='Big cities of Denmark',
+       `other_dk`='Rest of Denmark',
+       `greenland`='Greenland',
+       `foreign`='Foreign',
+       `unknown`='Unknown')) %>%
+  tbl_summary(missing = "no",
+              label = list(NOX ~ "NOX",
+                           CO ~ "CO",
+                           EC ~ "EC",
+                           PM25 ~ "non-EC PM2.5",
+                           O3 ~ "O3"),
+              by = place_birth,
+              statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+  modify_header(label ~ "**Pollutant**") %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+# Table 3 save as Word output
+```{r include=FALSE}
+table_3 %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(path = paste0(table3.folder,'table3_place_birth.docx'))
+```
+
+# Table 3 save as gt
+```{r include=TRUE}
+table_3 %>%
+  as_gt() %>%
+  tab_header(title = "Pollutant concentrations")
+```
