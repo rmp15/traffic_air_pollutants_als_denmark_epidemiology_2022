@@ -1,9 +1,7 @@
-# Multi-pollutants and ALS code review
-Long-term traffic-related air pollutant exposure and amyotrophic lateral sclerosis diagnosis in Denmark: a Bayesian hierarchical analysis.
+# Long-term Traffic-related Air Pollutant Exposure and Amyotrophic Lateral Sclerosis Diagnosis in Denmark: A Bayesian Hierarchical Analysis
+Parks, Robbie M.; Nunez, Yanelli; Balalian, Arin A; Gibson, Elizabeth A; Hansen, Johnnie; Raaschou-Nielsen, Ole; Ketzel, Matthias; Khan, Jibran; Brandt, Jørgen; Vermeulen, Roel; Peters, Susan; Goldsmith, Jeff; Re, Diane B; Weisskopf, Marc G; Kioumourtzoglou, Marianthi-Annaa. Long-term Traffic-related Air Pollutant Exposure and Amyotrophic Lateral Sclerosis Diagnosis in Denmark: A Bayesian Hierarchical Analysis. Epidemiology: November 2022 - Volume 33 - Issue 6 - p 757-766 doi: 10.1097/EDE.0000000000001536
 
-Parks et al. 2021/2022.
-
-Project for code review.
+Code used for analysis for Parks et al. Epidemiology 2022
 
 note: 0_00_create_folder_structure.R is in all of the files to create list of file locations.
 
